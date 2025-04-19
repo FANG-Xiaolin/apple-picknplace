@@ -57,6 +57,7 @@ class FrankaRealworldController:
             "message_name": "execute_posesmat4_osc",
             "ee_poses": poses,
             "gripper_isclose": gripper_isclose,
+            "use_smoothing": True,
             "speed_factor": speed_factor,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))

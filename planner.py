@@ -98,6 +98,7 @@ class MotionPlanner:
         if path_to_pregrasp is None:
             return None
         return CommandSequence([
+            GripperMotionCommand('open'),
             JointPathCommand(path_to_pregrasp), CartesianGoalCommand(grasp_param.grasp_pose),
             GripperMotionCommand('close'), CartesianGoalCommand(grasp_param.pregrasp_pose)
         ])
@@ -174,7 +175,7 @@ class TopDownGraspSampler(GraspSampler):
         pointcloud: np.ndarray,
         mask: Optional[np.ndarray] = None,
         rgb_im: Optional[np.ndarray] = None,
-        grasp_depth: float = 0.01,
+        grasp_depth: float = 0.03,
         max_trial: int = 1000,
     ) -> Iterator[GraspParameter]:
         top_center = np.array([*pointcloud[..., :2].mean(axis=0), pointcloud[..., 2].max()])
@@ -188,7 +189,24 @@ class TopDownGraspSampler(GraspSampler):
             grasp_pose[:3, 3] = grasp_center
             pregrasp_pose = grasp_pose.copy()
             pregrasp_pose[2, 3] += 0.03
-            yield GraspParameter(pregrasp_pose, grasp_pose)
+            yield GraspParameter(world2ee(pregrasp_pose), world2ee(grasp_pose))
+
+
+def world2ee(pose: Mat4) -> Mat4:
+    """
+    Convert the pose from world frame to end-effector frame.
+    Args:
+        pose (Mat4): The pose in world frame.
+    Returns:
+        Mat4: The pose in end-effector frame.
+    """
+    world2ee_tform = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, -1, 0],
+        [0, 0, 0, 1]
+    ])
+    return pose.dot(world2ee_tform)
 
 
 class AnyGraspSampler(GraspSampler):
