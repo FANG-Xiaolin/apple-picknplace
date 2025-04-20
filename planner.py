@@ -205,7 +205,7 @@ def world2ee(pose: Mat4) -> Mat4:
     """
     world2ee_tform = np.array([
         [1, 0, 0, 0],
-        [0, 1, 0, 0],
+        [0, -1, 0, 0],
         [0, 0, -1, 0],
         [0, 0, 0, 1]
     ])
