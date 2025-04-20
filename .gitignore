@@ -1,0 +1,14 @@
+config.yml
+
+.idea/
+
+*__pycache_*
+*.py[cod]
+*$py.class
+*.pth
+*.pkl
+*.npz
+*.txt
+
+*.log-????????
+.vim*

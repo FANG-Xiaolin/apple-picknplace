@@ -1,0 +1,26 @@
+run_in_simulation: False
+
+robot_ip:
+    'tcp://{TODO}:5560' # TODO: fill in robot_ip
+
+camera_name_to_serial:
+    'robot1_hand':
+        '231122070615'
+    'robot2_hand':
+        '231122071284'
+    'mount1':
+        '231122071283'
+    'mount2':
+        '231122071697'
+
+# TODO: fill in anygrasp checkpoint_detection.tar path if using fancy grasp sampler
+anygrasp_ckpt_path: ...
+
+iksolver_config:
+    urdf_path: './asset/panda_arm_hand_cam.urdf'
+    tool_link_name: 'panda_ee'
+
+cartesian_impedance_max_dist_perstep: 0.001
+
+# TODO: fill in OPENAI API Key for VLM services
+OPENAI_API_KEY: ...

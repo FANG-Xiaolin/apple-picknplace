@@ -20,7 +20,7 @@ from utils import plot_images
 
 OPENAI_ORGANIZATION_KEY = ""
 OPENAI_PROJECT_KEY = None
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY'] # TODO: need to fill this in
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY'] # TODO: from config
 
 
 def extract_tag_content(content: str, tag: str):
