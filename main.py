@@ -21,7 +21,7 @@ GRASPABLE_WIDTH = 0.08
 def main_pick_place_planned_franka():
     config = read_yaml('./config.yml')
 
-    robot_interface = initialize_robot_interface(config.FR3_CONTROLLER_ADDR)
+    robot_interface = initialize_robot_interface(config)
     perception_interface = initialize_perception_interface()
     planning_interface = initialize_planning_interface(config)
     execution_manager = initialize_execution_manager(config, robot_interface)

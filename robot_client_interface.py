@@ -24,29 +24,88 @@ EE2CAM = np.array([
     [0.0, 0.0, 0.0, 1.0],
 ])
 
-class FrankaRealworldController:
-    def __init__(self, robot_ip):
+
+class FrankaController:
+    def __init__(self):
+        pass
+    
+    def get_current_joint_states(self):
+        '''
+        Get the current joint states of the robot.
+        Returns:
+            dict: A dictionary containing joint positions and end-effector pose.
+        '''
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def get_current_joint_confs(self):
+        return self.get_current_joint_states()['qpos']
+
+
+class FrankaPybullController(FrankaController):
+    def __init__(self, config):
+        import pybullet as pb
+        self.pb = pb
+        pb.connect(pb.GUI)
+        self.robot = pb.loadURDF(config.iksolver_config.urdf_path, useFixedBase=True)
+        self.movable_joint_ids = [i for i in range(pb.getNumJoints(self.robot)) if pb.getJointInfo(self.robot, i)[2] == pb.JOINT_REVOLUTE]
+        with open('./example/captures.pkl', 'rb') as f:
+            joint_conf = pickle.load(f)['qpos']
+        self.execute_joint_impedance_path([joint_conf])
+
+    def capture_image(self):
+        with open('./example/captures.pkl', 'rb') as f:
+            message = pickle.load(f)
+        return message['rgb'], message['depth'], message['intrinsics']
+
+    def execute_joint_impedance_path(self, poses):
+        for pose in poses:
+            for joint_i, joint_val in enumerate(pose):
+                self.pb.resetJointState(self.robot, self.movable_joint_ids[joint_i], targetValue=joint_val, targetVelocity=0)
+
+    def get_current_joint_states(self):
+        joint_states = {}
+        joint_states['qpos'] = [self.pb.getJointState(self.robot, joint_i)[0] for joint_i in self.movable_joint_ids]
+        ee_link_state = self.pb.getLinkState(self.robot, 10)
+        from rotation_utils import quaternion_to_matrix
+        ee_pose = np.eye(4)
+        quat_x, quat_y, quat_z, quat_w = ee_link_state[1]
+        ee_pose[:3, :3] = quaternion_to_matrix(np.array([quat_w, quat_x, quat_y, quat_z]))
+        ee_pose[:3, 3] = ee_link_state[0]
+        joint_states['ee_pose'] = ee_pose
+        return joint_states
+    
+    def get_gripper_camera_extrinsics(self):
+        robot_state_cur = self.get_current_joint_states()
+        extrinsic = robot_state_cur['ee_pose'].dot(EE2CAM)
+        return extrinsic
+
+    def open_gripper(self):
+        # TODO set joint 11, 12
+        pass
+
+    def close_gripper(self):
+        # TODO set joint 11 12
+        pass
+
+
+class FrankaRealworldController(FrankaController):
+    def __init__(self, config):
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
-        socket.connect(robot_ip)
+        socket.connect(config.robot_ip)
         self.socket = socket
         self.camera_intrinsics = None
         self.image_dim = None
         self.capture_rs = None
 
     def capture_image(self):
-        self.socket.send(zlib.compress(pickle.dumps({"message_name": "capture_realsense"})))
+        self.socket.send(zlib.compress(pickle.dumps({'message_name': 'capture_realsense'})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
-
-        return (
-            message["rgb"],
-            message["depth"],
-            message["intrinsics"],
-        )  # dep in m (not mm, no need to /1000)
+        return message['rgb'], message['depth'], message['intrinsics'] # dep in m (not mm, no need to /1000)
 
     def get_gripper_camera_extrinsics(self):
         robot_state_cur = self.get_current_joint_states()
-        extrinsic = robot_state_cur["ee_pose"].dot(EE2CAM)
+        extrinsic = robot_state_cur['ee_pose'].dot(EE2CAM)
         return extrinsic
 
     def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
@@ -54,67 +113,67 @@ class FrankaRealworldController:
         End-effector poses in world frame.
         """
         self.socket.send(zlib.compress(pickle.dumps({
-            "message_name": "execute_posesmat4_osc",
-            "ee_poses": poses,
-            "gripper_isclose": gripper_isclose,
-            "use_smoothing": True,
-            "speed_factor": speed_factor,
+            'message_name': 'execute_posesmat4_osc',
+            'ee_poses': poses,
+            'gripper_isclose': gripper_isclose,
+            'use_smoothing': True,
+            'speed_factor': speed_factor,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
     def execute_joint_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
         self.socket.send(zlib.compress(pickle.dumps({
-            "message_name": "execute_joint_impedance_path",
-            "joint_confs": poses,
-            "gripper_isclose": gripper_isclose.astype(bool) if isinstance(gripper_isclose, np.ndarray) else gripper_isclose,
-            "speed_factor": speed_factor,
+            'message_name': 'execute_joint_impedance_path',
+            'joint_confs': poses,
+            'gripper_isclose': gripper_isclose.astype(bool) if isinstance(gripper_isclose, np.ndarray) else gripper_isclose,
+            'speed_factor': speed_factor,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
     def open_gripper(self):
-        self.socket.send(zlib.compress(pickle.dumps({"message_name": "open_gripper"})))
+        self.socket.send(zlib.compress(pickle.dumps({'message_name': 'open_gripper'})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
     def close_gripper(self):
-        self.socket.send(zlib.compress(pickle.dumps({"message_name": "close_gripper"})))
+        self.socket.send(zlib.compress(pickle.dumps({'message_name': 'close_gripper'})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
-    def get_current_joint_confs(self):
-        return self.get_current_joint_states()["qpos"]
-
     def get_current_joint_states(self):
-        self.socket.send(zlib.compress(pickle.dumps({"message_name": "get_joint_states"})))
+        self.socket.send(zlib.compress(pickle.dumps({'message_name': 'get_joint_states'})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
     def go_to_home(self, gripper_open=False):
-        self.socket.send(zlib.compress(pickle.dumps({"message_name": "go_to_home", "gripper_open": gripper_open})))
+        self.socket.send(zlib.compress(pickle.dumps({'message_name': 'go_to_home', 'gripper_open': gripper_open})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
-        return message["success"]
+        return message['success']
 
     def free_motion(self, gripper_open=False, timeout=3.0):
         self.socket.send(zlib.compress(pickle.dumps({
-            "message_name": "free_motion_control",
-            "gripper_open": gripper_open,
-            "timeout": timeout,
+            'message_name': 'free_motion_control',
+            'gripper_open': gripper_open,
+            'timeout': timeout,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
-        return message["success"]
+        return message['success']
 
     def reset_joint_to(self, qpos, gripper_open=False):
         self.socket.send(zlib.compress(pickle.dumps({
-            "message_name": "reset_joint_to",
-            "gripper_open": gripper_open,
-            "qpos": qpos,
+            'message_name': 'reset_joint_to',
+            'gripper_open': gripper_open,
+            'qpos': qpos,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
-        return message["success"]
+        return message['success']
 
 
-def initialize_robot_interface(robot_ip):
-    robot_interface = FrankaRealworldController(robot_ip=robot_ip)
+def initialize_robot_interface(config):
+    if config.run_in_simulation:
+        robot_interface = FrankaPybullController(config)
+    else:
+        robot_interface = FrankaRealworldController(config)
     return robot_interface

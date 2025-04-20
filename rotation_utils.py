@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Union
 import torch
 import torch.nn.functional as F
 
@@ -92,9 +93,9 @@ def euler2mat(euler, homogeneous: bool = False):
 
 #######################################################################################
 # pytorch3d_transforms
-def quaternion_to_matrix(quaternions: torch.Tensor) -> torch.Tensor:
+def quaternion_to_matrix(quaternions: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
     """
-    Convert rotations given as quaternions to rotation matrices.
+    Convert rotations given as quaternions w-x-y-z to rotation matrices.
 
     Args:
         quaternions: quaternions with real part first,
@@ -103,6 +104,8 @@ def quaternion_to_matrix(quaternions: torch.Tensor) -> torch.Tensor:
     Returns:
         Rotation matrices as tensor of shape (..., 3, 3).
     """
+    if isinstance(quaternions, np.ndarray):
+        quaternions = torch.tensor(quaternions)
     r, i, j, k = torch.unbind(quaternions, -1)
     # pyre-fixme[58]: `/` is not supported for operand types `float` and `Tensor`.
     two_s = 2.0 / (quaternions * quaternions).sum(-1)
