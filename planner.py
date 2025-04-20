@@ -92,9 +92,9 @@ class MotionPlanner:
         for rv in self.grasp_sampler.sample_grasp(target_object_pcd_worldframe):
             yield rv
 
-    def generate_grasp_path(self, qpos: JointConf, grasp_param: GraspParameter) -> CommandSequence:
+    def generate_grasp_path(self, start_qpos: JointConf, grasp_param: GraspParameter) -> CommandSequence:
         # Generate the path for the robot to grasp the object
-        path_to_pregrasp = self.plan_arm_path(qpos, grasp_param.pregrasp_pose)
+        path_to_pregrasp = self.plan_arm_path(start_qpos, grasp_param.pregrasp_pose)
         if path_to_pregrasp is None:
             return None
         return CommandSequence([
@@ -103,16 +103,20 @@ class MotionPlanner:
             GripperMotionCommand('close'), CartesianGoalCommand(grasp_param.pregrasp_pose)
         ])
 
-    def plan_picking(self, qpos: JointConf, pcd_cameraframe, pcd_worldframe, rgb_im, target_object_mask) -> CommandSequence:
+    def plan_picking(self, start_qpos: JointConf, pcd_cameraframe, pcd_worldframe, rgb_im, target_object_mask) -> CommandSequence:
         for grasp_param in self.sample_grasp_pose(pcd_cameraframe, pcd_worldframe, rgb_im, target_object_mask):
-            picking_command = self.generate_grasp_path(qpos, grasp_param)
+            print(grasp_param.pregrasp_pose, '\n', grasp_param.grasp_pose)
+            picking_command = self.generate_grasp_path(start_qpos, grasp_param)
             if picking_command is not None:
                 return picking_command
 
-    def plan_placing(self, qpos: JointConf, x_range, y_range) -> CommandSequence:
-        placement_param = self.sample_placement_pose(x_range, y_range)
-        placing_command = self.generate_grasp_path(qpos, placement_param)
-        return placing_command
+    def plan_placing(self, qpos: JointConf, x_range, y_range, max_iter=10) -> CommandSequence:
+        for _ in range(max_iter):
+            placement_param = self.sample_placement_pose(x_range, y_range)
+            print(placement_param.pregrasp_pose,'\n', placement_param.grasp_pose)
+            placing_command = self.generate_placement_path(qpos, placement_param)
+            if placing_command is not None:
+                return placing_command
 
     def sample_placement_pose(self, x_range, y_range) -> GraspParameter:
         # Sample a placement pose for the object
@@ -122,15 +126,14 @@ class MotionPlanner:
         place_pose = np.eye(4)
         place_pose[:3, 3] = [x_loc, y_loc, z]
         preplace_pose = place_pose.copy()
-        preplace_pose[:3, 3] = z + 0.05
-        return GraspParameter(
-            pregrasp_pose=preplace_pose,
-            grasp_pose=place_pose
-        )
+        preplace_pose[2, 3] = z + 0.05
+        return GraspParameter(world2ee(preplace_pose), world2ee(place_pose))
 
-    def generate_placement_path(self, qpos: JointConf, grasp_param: GraspParameter) -> CommandSequence:
+    def generate_placement_path(self, start_qpos: JointConf, grasp_param: GraspParameter) -> CommandSequence:
         # Generate the path for the robot to place the object
-        path_to_pregrasp = self.plan_arm_path(qpos, grasp_param.pregrasp_pose)
+        path_to_pregrasp = self.plan_arm_path(start_qpos, grasp_param.pregrasp_pose)
+        if path_to_pregrasp is None:
+            return None
         return CommandSequence([
             JointPathCommand(path_to_pregrasp), CartesianGoalCommand(grasp_param.grasp_pose),
             GripperMotionCommand('open'), CartesianGoalCommand(grasp_param.pregrasp_pose)
@@ -175,7 +178,7 @@ class TopDownGraspSampler(GraspSampler):
         pointcloud: np.ndarray,
         mask: Optional[np.ndarray] = None,
         rgb_im: Optional[np.ndarray] = None,
-        grasp_depth: float = 0.03,
+        grasp_depth: float = 0.05,
         max_trial: int = 1000,
     ) -> Iterator[GraspParameter]:
         top_center = np.array([*pointcloud[..., :2].mean(axis=0), pointcloud[..., 2].max()])
@@ -188,7 +191,7 @@ class TopDownGraspSampler(GraspSampler):
             grasp_pose[:3, :3] = euler2mat([0, 0, yaw_angle])
             grasp_pose[:3, 3] = grasp_center
             pregrasp_pose = grasp_pose.copy()
-            pregrasp_pose[2, 3] += 0.03
+            pregrasp_pose[2, 3] += 0.03 + grasp_depth
             yield GraspParameter(world2ee(pregrasp_pose), world2ee(grasp_pose))
 
 

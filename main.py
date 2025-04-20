@@ -30,8 +30,8 @@ def main_pick_place_planned_franka():
     print(f'Retrieved qpos from the server: {current_qpos}')
 
     object_name = 'peach'
-    place_xrange = [0, 0.7]
-    place_yrange = [-0.7, 0]
+    place_xrange = [0.2, 0.5]
+    place_yrange = [-0.6, -0.1]
 
     rgb_im, dep_im, intrinsics = robot_interface.capture_image()
     extrinsic = robot_interface.get_gripper_camera_extrinsics()
