@@ -29,28 +29,30 @@ def main_pick_place_planned_franka():
     current_qpos = robot_interface.get_current_joint_confs()
     print(f'Retrieved qpos from the server: {current_qpos}')
 
+    trial_num = 3
     object_name = 'peach'
-    place_xrange = [0.2, 0.5]
+    place_xrange = [0.45, 0.7]
     place_yrange = [-0.6, -0.1]
 
-    rgb_im, dep_im, intrinsics = robot_interface.capture_image()
-    extrinsic = robot_interface.get_gripper_camera_extrinsics()
-    rgbd_observation = RGBDObservation(rgb_im, dep_im, intrinsics, extrinsic)
+    for _ in range(trial_num):
+        rgb_im, dep_im, intrinsics = robot_interface.capture_image()
+        extrinsic = robot_interface.get_gripper_camera_extrinsics()
+        rgbd_observation = RGBDObservation(rgb_im, dep_im, intrinsics, extrinsic)
 
-    target_object_mask = perception_interface.get_object_mask(rgbd_observation, object_name)
-    show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
-    picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
+        target_object_mask = perception_interface.get_object_mask(rgbd_observation, object_name)
+        # show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
+        picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
 
-    execution_manager.execute_commands(picking_command_sequence)
-    robot_interface.go_to_home(gripper_open=False)
+        execution_manager.execute_commands(picking_command_sequence)
+        robot_interface.go_to_home(gripper_open=False)
 
-    current_qpos = robot_interface.get_current_joint_confs()
-    print(f'Retrieved qpos from the server: {current_qpos}')
+        current_qpos = robot_interface.get_current_joint_confs()
+        print(f'Retrieved qpos from the server: {current_qpos}')
 
-    placing_command_sequence = planning_interface.plan_placing(current_qpos, place_xrange, place_yrange)
-    execution_manager.execute_commands(placing_command_sequence)
+        placing_command_sequence = planning_interface.plan_placing(current_qpos, place_xrange, place_yrange)
+        execution_manager.execute_commands(placing_command_sequence)
 
-    robot_interface.go_to_home(gripper_open=True)
+        robot_interface.go_to_home(gripper_open=True)
 
 
 if __name__ == '__main__':

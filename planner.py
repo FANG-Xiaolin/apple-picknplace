@@ -51,10 +51,7 @@ class GraspParameter:
     pregrasp_pose: Mat4 # mat 4
     grasp_pose: Mat4 # mat 4
 
-
-
 CommandSequence = list[Command]
-
 
 class MotionPlanner:
     def __init__(self, config):
@@ -105,7 +102,6 @@ class MotionPlanner:
 
     def plan_picking(self, start_qpos: JointConf, pcd_cameraframe, pcd_worldframe, rgb_im, target_object_mask) -> CommandSequence:
         for grasp_param in self.sample_grasp_pose(pcd_cameraframe, pcd_worldframe, rgb_im, target_object_mask):
-            print(grasp_param.pregrasp_pose, '\n', grasp_param.grasp_pose)
             picking_command = self.generate_grasp_path(start_qpos, grasp_param)
             if picking_command is not None:
                 return picking_command
@@ -113,7 +109,6 @@ class MotionPlanner:
     def plan_placing(self, qpos: JointConf, x_range, y_range, max_iter=10) -> CommandSequence:
         for _ in range(max_iter):
             placement_param = self.sample_placement_pose(x_range, y_range)
-            print(placement_param.pregrasp_pose,'\n', placement_param.grasp_pose)
             placing_command = self.generate_placement_path(qpos, placement_param)
             if placing_command is not None:
                 return placing_command

@@ -10,7 +10,7 @@
 """
 
 """
-
+import numpy as np
 from planner import CartesianGoalCommand, GripperMotionCommand, JointPathCommand, Command
 
 class ExecutionManager:
@@ -29,7 +29,7 @@ class ExecutionManager:
             self.robot_client.execute_joint_impedance_path(command.args[0])
         elif isinstance(command, CartesianGoalCommand):
             current_ee_pose = self.robot_client.get_current_joint_states()['ee_pose']
-            nstep = max((command.args[0][:3, 3] - current_ee_pose[:3, 3]) / self.config.cartesian_impedance_max_dist_perstep)
+            nstep = max(np.abs(command.args[0][:3, 3] - current_ee_pose[:3, 3]) / self.config.cartesian_impedance_max_dist_perstep)
             self.robot_client.execute_cartesian_impedance_path([current_ee_pose, command.args[0]], speed_factor=int(nstep))
         elif isinstance(command, GripperMotionCommand):
             if command.args[0] == 'open':
