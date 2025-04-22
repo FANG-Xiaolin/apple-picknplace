@@ -16,8 +16,6 @@ from applebot.perception import initialize_perception_interface, RGBDObservation
 from applebot.planner import initialize_planning_interface
 from applebot.utils.common_utils import read_yaml, show_image_with_mask
 
-GRASPABLE_WIDTH = 0.08
-
 def main_pick_place_planned_franka():
     config = read_yaml('./config.yml')
 
@@ -30,7 +28,7 @@ def main_pick_place_planned_franka():
     print(f'Retrieved qpos from the server: {current_qpos}')
 
     trial_num = 3
-    object_name = 'peach'
+    object_name = 'apple'
     place_xrange = [0.45, 0.7]
     place_yrange = [-0.6, -0.1]
 

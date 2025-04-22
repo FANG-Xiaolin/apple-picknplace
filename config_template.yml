@@ -5,13 +5,7 @@ robot_ip:
 
 camera_name_to_serial:
     'robot1_hand':
-        '231122070615'
-    'robot2_hand':
-        '231122071284'
-    'mount1':
-        '231122071283'
-    'mount2':
-        '231122071697'
+        '...' # TODO: fill in Realsense serial number
 
 # TODO: fill in anygrasp checkpoint_detection.tar path if using fancy grasp sampler
 anygrasp_ckpt_path: ...

@@ -10,6 +10,7 @@
 """
 Minimal client interface for Franka robot in real world.
 """
+import time
 import zmq
 import zlib
 import pickle
@@ -114,6 +115,7 @@ class FrankaPybulletController(FrankaController):
         for pose in poses:
             for joint_i, joint_val in enumerate(pose):
                 self.pb.resetJointState(self.robot, self.movable_joint_ids[joint_i], targetValue=joint_val, targetVelocity=0)
+            time.sleep(0.05)
 
     def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
         # TODO flying gripper or diff-ik
@@ -134,10 +136,12 @@ class FrankaPybulletController(FrankaController):
     def open_gripper(self):
         for gripper_joint_id in self.gripper_joint_ids:
             self.pb.resetJointState(self.robot, gripper_joint_id, targetValue=.04, targetVelocity=0)
+            time.sleep(0.01)
 
     def close_gripper(self):
         for gripper_joint_id in self.gripper_joint_ids:
             self.pb.resetJointState(self.robot, gripper_joint_id, targetValue=0., targetVelocity=0)
+            time.sleep(0.01)
 
     def go_to_home(self, gripper_open=False):
         for joint_i, joint_val in enumerate(self.home_joint_conf):
@@ -146,6 +150,7 @@ class FrankaPybulletController(FrankaController):
             self.open_gripper()
         else:
             self.close_gripper()
+        time.sleep(1.)
 
 
 class FrankaRealworldController(FrankaController):
