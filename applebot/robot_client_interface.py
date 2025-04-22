@@ -94,6 +94,9 @@ class FrankaController:
         """
         raise NotImplementedError('This method should be overridden by subclasses.')
 
+    def get_gripper_state(self):
+        return self.get_current_joint_states()['gripper_state']
+
 
 class FrankaPybulletController(FrankaController):
     def __init__(self, config):
@@ -131,6 +134,7 @@ class FrankaPybulletController(FrankaController):
         ee_pose[:3, :3] = quaternion_to_matrix(np.array([quat_w, quat_x, quat_y, quat_z]))
         ee_pose[:3, 3] = ee_link_state[0]
         joint_states['ee_pose'] = ee_pose
+        joint_states['gripper_state'] = self.pb.getJointState(self.robot, self.gripper_joint_ids[0])[0]
         return joint_states
 
     def open_gripper(self):
