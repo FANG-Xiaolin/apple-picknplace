@@ -10,6 +10,7 @@
 """
 
 """
+import time
 from applebot.robot_client_interface import initialize_robot_interface
 from applebot.execution_manager import initialize_execution_manager
 from applebot.perception import initialize_perception_interface, RGBDObservation
@@ -24,6 +25,7 @@ def main_pick_place_planned_franka():
     planning_interface = initialize_planning_interface(config)
     execution_manager = initialize_execution_manager(config, robot_interface)
 
+    is_capturing = True
     trial_num = 3
     object_name = 'apple'
     place_xrange = [0.45, 0.7]
@@ -41,7 +43,7 @@ def main_pick_place_planned_franka():
         current_qpos = robot_interface.get_current_joint_confs()
         picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
         print('Executing picking command sequence...')
-        execution_manager.execute_commands(picking_command_sequence)
+        execution_manager.execute_commands(picking_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/pick_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl')
         print('Finish picking command sequence.')
 
         robot_interface.go_to_home(gripper_open=False)
@@ -49,7 +51,7 @@ def main_pick_place_planned_franka():
         current_qpos = robot_interface.get_current_joint_confs()
         placing_command_sequence = planning_interface.plan_placing(current_qpos, place_xrange, place_yrange)
         print('Executing placing command sequence...')
-        execution_manager.execute_commands(placing_command_sequence)
+        execution_manager.execute_commands(placing_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/place_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl')
         print('Finish placing command sequence.')
 
         robot_interface.go_to_home(gripper_open=True)

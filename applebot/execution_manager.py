@@ -20,17 +20,17 @@ class ExecutionManager:
         self.execution_steps = []
         self.robot_client = robot_client
 
-    def exeute_command(self, command: Command):
+    def exeute_command(self, command: Command, is_capturing: bool = False):
         """
         Execute a single step in the execution manager.
         """
         # TODO recording
         if isinstance(command, JointPathCommand):
-            self.robot_client.execute_joint_impedance_path(command.args[0])
+            self.robot_client.execute_joint_impedance_path(command.args[0], is_capturing=is_capturing)
         elif isinstance(command, CartesianGoalCommand):
             current_ee_pose = self.robot_client.get_current_joint_states()['ee_pose']
             nstep = max(np.abs(command.args[0][:3, 3] - current_ee_pose[:3, 3]) / self.config.cartesian_impedance_max_dist_perstep)
-            self.robot_client.execute_cartesian_impedance_path([current_ee_pose, command.args[0]], speed_factor=int(nstep))
+            self.robot_client.execute_cartesian_impedance_path([current_ee_pose, command.args[0]], speed_factor=int(nstep), is_capturing=is_capturing)
         elif isinstance(command, GripperMotionCommand):
             if command.args[0] == 'open':
                 self.robot_client.open_gripper()
@@ -41,12 +41,18 @@ class ExecutionManager:
         else:
             raise ValueError(f"Unknown command type: {command}")
 
-    def execute_commands(self, commands: list[Command]):
+    def execute_commands(self, commands: list[Command], is_capturing: bool = False, capture_save_name: str = 'captured_list.pkl'):
         """
         Execute a sequence of commands.
         """
+        # TODO: Use context manager
+        if is_capturing:
+            # flush saved_list
+            self.robot_client.dump_captured_list('tmp.pkl')
         for command in commands:
             self.exeute_command(command)
+        if is_capturing:
+            self.robot_client.dump_captured_list(capture_save_name)
 
 
 def initialize_execution_manager(config, robot_client) -> ExecutionManager:

@@ -152,6 +152,9 @@ class FrankaPybulletController(FrankaController):
             self.close_gripper()
         time.sleep(1.)
 
+    def dump_captured_list(self, filename):
+        pass
+
 
 class FrankaRealworldController(FrankaController):
     def __init__(self, config):
@@ -168,7 +171,10 @@ class FrankaRealworldController(FrankaController):
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message['rgb'], message['depth'], message['intrinsics'] # dep in m (not mm, no need to /1000)
 
-    def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
+    def execute_cartesian_impedance_path(
+        self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=1,
+        is_capturing: bool = False, capture_step: int = 1
+    ):
         """
         End-effector poses in world frame.
         """
@@ -176,18 +182,24 @@ class FrankaRealworldController(FrankaController):
             'message_name': 'execute_posesmat4_osc',
             'ee_poses': poses,
             'gripper_isclose': gripper_isclose,
-            'use_smoothing': True,
             'speed_factor': speed_factor,
+            'is_capturing': is_capturing,
+            'capture_step': capture_step,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
 
-    def execute_joint_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
+    def execute_joint_impedance_path(
+        self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3,
+        is_capturing: bool = False, capture_step: int = 1
+    ):
         self.socket.send(zlib.compress(pickle.dumps({
             'message_name': 'execute_joint_impedance_path',
             'joint_confs': poses,
             'gripper_isclose': gripper_isclose.astype(bool) if isinstance(gripper_isclose, np.ndarray) else gripper_isclose,
             'speed_factor': speed_factor,
+            'is_capturing': is_capturing,
+            'capture_step': capture_step,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message
@@ -226,6 +238,14 @@ class FrankaRealworldController(FrankaController):
             'message_name': 'reset_joint_to',
             'gripper_open': gripper_open,
             'qpos': qpos,
+        })))
+        message = pickle.loads(zlib.decompress(self.socket.recv()))
+        return message['success']
+
+    def dump_captured_list(self, filename):
+        self.socket.send(zlib.compress(pickle.dumps({
+            'message_name': 'dump_captured_list',
+            'filename': filename,
         })))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message['success']

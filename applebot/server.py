@@ -1,11 +1,14 @@
+import os
 import zmq
 import zlib
 import pickle
 import time
 import argparse
+from datetime import datetime
 
 import numpy as np
 import os.path as osp
+from collections.abc import Iterable
 
 from deoxys import config_root
 from deoxys.experimental.motion_utils import reset_joints_to, follow_joint_traj
@@ -25,15 +28,16 @@ def reset_joint_to(message):
 
 def capture_realsense(message):
     (rgb, depth), intrinsics = cameras[target_camera_name].capture(), cameras[target_camera_name].intrinsics
-    message = {"rgb": rgb,
-			   "depth": depth/1000.,
-			   "intrinsics": intrinsics[0]
-               }
+    message = {
+        "rgb": rgb,
+		"depth": depth/1000.,
+		"intrinsics": intrinsics[0]
+    }
     socket.send(zlib.compress(pickle.dumps(message)))
 
 
 def get_fixed_camera_extrinsic(message):
-    with open(osp.join(osp.dirname(__file__), 'calibrations', 'camera_configs_latest.pkl'), 'rb') as f:
+    with open(osp.join(osp.dirname(__file__), '../', 'calibrations', 'camera_configs_latest.pkl'), 'rb') as f:
         camera_configs = pickle.load(f)
     message = {
         message['camera_name']: camera_configs[message['camera_name']]['extrinsics']
@@ -117,43 +121,113 @@ def free_motion_control(message):
 
 
 def execute_posesmat4_osc(message):
-    pred_traj = message['ee_poses']
+    ee_poses = message['ee_poses']
     speed_factor = message['speed_factor']
-    # gripper_isopen = 1 - message['gripper_isclose'] # TODO
-    use_smoothing = message.get('use_smoothing', True)
-    print(f'move {len(pred_traj)} steps.')
+    gripper_isclose = message['gripper_isclose']
+    if not isinstance(gripper_isclose, Iterable):
+        gripper_isclose = [gripper_isclose for _ in ee_poses]
+    is_capturing = message.get('is_capturing', False)
+    if speed_factor > 1:
+        ee_poses, indices = interpolate_pose_trajectory(ee_poses, speed_factor)
+    else:
+        indices = range(len(ee_poses))
+    print(f'move {len(ee_poses)} steps.')
 
-    if use_smoothing:
-        if speed_factor > 1:
-            pred_traj, indices = interpolate_pose_trajectory(pred_traj, speed_factor)
-        else:
-            indices = range(len(pred_traj))
+    for i, step in enumerate(ee_poses):
+        osc_move_to_target_absolute_pose_controller(
+            robot_interface, controller_cfg_osc,
+            step,
+            gripper_close = gripper_isclose[indices[i]],
+        )
 
-    for i, step in enumerate(pred_traj):
-        if use_smoothing:
-            osc_move_to_target_absolute_pose_controller(
-                robot_interface, controller_cfg_osc,
-                step, 
-            )
-        else:
-            for _ in range(speed_factor):
-                osc_move_to_target_absolute_pose_controller(
-                    robot_interface, controller_cfg_osc,
-                    step,                 
-                )
+        if is_capturing:
+            if i % message['capture_step'] == 0:
+                # Logging
+                capture_snapshot()
+
     message = {"success": True}
     socket.send(zlib.compress(pickle.dumps(message)))
 
 
+def capture_snapshot():
+    global save_traj
+    obs_info = {}
+    for camera in camera_list:
+        (rgb, depth) = cameras[camera].capture()
+        obs_info[camera] = {
+            'rgb': rgb,
+            'depth': depth / 1000.,
+            'timestamp': datetime.now()
+        }
+
+    last_state = robot_interface._state_buffer[-1]
+    last_gripper_state = robot_interface._gripper_state_buffer[-1].width \
+        if len(robot_interface._gripper_state_buffer) > 0 else 0.0
+    proprio_info = {
+        'ee_pose': np.array(last_state.O_T_EE).reshape(4, 4).T,
+        'qpos': np.array(last_state.q),
+        'gripper_state': np.array(last_gripper_state)
+    }
+    obs_info['robot'] = proprio_info
+    save_traj.append(obs_info)
+
+
 def execute_joint_impedance_path(message):
-    joint_confs = message['joint_confs']
+    q_states = message['joint_confs']
+    is_capturing = message.get('is_capturing', False)
     gripper_isclose = message['gripper_isclose']
-    print(f'move {len(joint_confs)} steps.')
-    follow_joint_traj(
-        robot_interface, joint_confs, controller_cfg=controller_cfg_imp,
-        gripper_close=gripper_isclose,
-    )
+    if not isinstance(gripper_isclose, Iterable):
+        gripper_isclose = [gripper_isclose for _ in q_states]
+    print(f'move {len(q_states)} steps.')
+
+    if is_capturing:
+        capture_step = message['capture_step']
+        for i in range(len(q_states) // capture_step + 1):
+            q_state_sequence = q_states[i * capture_step:(i + 1) * capture_step]
+            if len(q_state_sequence) == 0:
+                continue
+            follow_joint_traj(
+                robot_interface, q_state_sequence,
+                gripper_close=gripper_isclose[i * capture_step:(i + 1) * capture_step],
+                num_addition_steps=0
+            )
+            # Logging
+            capture_snapshot()
+        reset_joints_to(robot_interface, q_states[-1], gripper_close=gripper_isclose[-1])
+    else:
+        follow_joint_traj(
+            robot_interface, q_states, controller_cfg=controller_cfg_imp,
+            gripper_close=gripper_isclose,
+        )
+
+    message = {"success": True}
     socket.send(zlib.compress(pickle.dumps(message)))
+
+
+def dump_captured_list(message):
+    filename = message['filename']
+    global save_traj
+    with open(osp.join(osp.dirname(__file__), '../', 'calibrations', 'camera_configs_latest.pkl'), 'rb') as f:
+        camera_configs = pickle.load(f)
+    saved_dict = {
+        'trajectory': save_traj,
+        'camera_configs': {
+            camera_name: {
+                'extrinsics': camera_configs[camera_name]['extrinsics'] if camera_name in camera_configs else None,
+                'intrinsics': cameras[camera_name].intrinsics[0]
+            } for camera_name in camera_list
+        }
+    }
+    dirname = osp.dirname(filename)
+    if not osp.exists(dirname):
+        os.makedirs(dirname)
+    with open(filename, 'wb') as f:
+        pickle.dump(save_traj, f)
+    print(f'saved to {filename}')
+    save_traj = []
+
+    return_message = {"success": True}
+    socket.send(zlib.compress(pickle.dumps(return_message)))
 
 
 def parse_args():
@@ -222,8 +296,11 @@ if __name__ == '__main__':
     robot_interface = get_franka_interface(robot_index=1, wait_for_state=True, auto_close=True)
     # robot_interface.set_open_gripper_width(0.06) # default gripper width
 
-    target_camera_name = 'robot1_hand' # 'mount2'  # 
-    cameras = get_realsense_capturer_dict([target_camera_name], auto_close=True, skip_frames=35)
+    target_camera_name = 'robot1_hand' # 'mount2'  #
+    capture_camera_name = 'mount2'
+    camera_list = [target_camera_name, capture_camera_name]
+    cameras = get_realsense_capturer_dict(camera_list, auto_close=True, skip_frames=35)
+    save_traj = []
 
     while True:
         try:
