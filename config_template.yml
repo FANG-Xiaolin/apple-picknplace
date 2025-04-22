@@ -3,6 +3,8 @@ run_in_simulation: False
 robot_ip:
     'tcp://{TODO}:5560' # TODO: fill in robot_ip
 
+vis: True
+
 camera_name_to_serial:
     'robot1_hand':
         '...' # TODO: fill in Realsense serial number

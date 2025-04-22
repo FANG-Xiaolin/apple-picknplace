@@ -24,9 +24,6 @@ def main_pick_place_planned_franka():
     planning_interface = initialize_planning_interface(config)
     execution_manager = initialize_execution_manager(config, robot_interface)
 
-    current_qpos = robot_interface.get_current_joint_confs()
-    print(f'Retrieved qpos from the server: {current_qpos}')
-
     trial_num = 3
     object_name = 'apple'
     place_xrange = [0.45, 0.7]
@@ -38,17 +35,22 @@ def main_pick_place_planned_franka():
         rgbd_observation = RGBDObservation(rgb_im, dep_im, intrinsics, extrinsic)
 
         target_object_mask = perception_interface.get_object_mask(rgbd_observation, object_name)
-        # show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
-        picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
+        if config.vis:
+            show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
 
+        current_qpos = robot_interface.get_current_joint_confs()
+        picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
+        print('Executing picking command sequence...')
         execution_manager.execute_commands(picking_command_sequence)
+        print('Finish picking command sequence.')
+
         robot_interface.go_to_home(gripper_open=False)
 
         current_qpos = robot_interface.get_current_joint_confs()
-        print(f'Retrieved qpos from the server: {current_qpos}')
-
         placing_command_sequence = planning_interface.plan_placing(current_qpos, place_xrange, place_yrange)
+        print('Executing placing command sequence...')
         execution_manager.execute_commands(placing_command_sequence)
+        print('Finish placing command sequence.')
 
         robot_interface.go_to_home(gripper_open=True)
 
