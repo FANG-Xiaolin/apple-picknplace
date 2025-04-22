@@ -40,27 +40,84 @@ class FrankaController:
     def get_current_joint_confs(self):
         return self.get_current_joint_states()['qpos']
 
+    def get_gripper_camera_extrinsics(self):
+        robot_state_cur = self.get_current_joint_states()
+        extrinsic = robot_state_cur['ee_pose'].dot(EE2CAM)
+        return extrinsic
 
-class FrankaPybullController(FrankaController):
+    def capture_image(self):
+        '''
+        Capture an image from the robot's camera.
+        Returns:
+            tuple: A tuple containing RGB image, depth image, and camera intrinsics.
+        '''
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def open_gripper(self):
+        '''
+        Open the robot's gripper.
+        '''
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def close_gripper(self):
+        '''
+        Close the robot's gripper.
+        '''
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
+        """
+        Execute a Cartesian impedance path.
+        Args:
+            poses:          list of end-effector poses in world frame.
+            gripper_isclose: bool or np.ndarray, whether to close the gripper.
+            speed_factor:   int, speed factor for the execution.
+        """
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def execute_joint_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
+        """
+        Execute a joint impedance path.
+        Args:
+            poses:          list of joint configurations.
+            gripper_isclose: bool or np.ndarray, whether to close the gripper.
+            speed_factor:   int, speed factor for the execution.
+        """
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+    def go_to_home(self, gripper_open=False):
+        """
+        Move the robot to the home position.
+        Args:
+            gripper_open: bool, whether to open the gripper.
+        """
+        raise NotImplementedError('This method should be overridden by subclasses.')
+
+
+class FrankaPybulletController(FrankaController):
     def __init__(self, config):
         import pybullet as pb
         self.pb = pb
         pb.connect(pb.GUI)
         self.robot = pb.loadURDF(config.iksolver_config.urdf_path, useFixedBase=True)
         self.movable_joint_ids = [i for i in range(pb.getNumJoints(self.robot)) if pb.getJointInfo(self.robot, i)[2] == pb.JOINT_REVOLUTE]
-        with open('./example/captures.pkl', 'rb') as f:
-            joint_conf = pickle.load(f)['qpos']
-        self.execute_joint_impedance_path([joint_conf])
+        self.gripper_joint_ids = [10, 11]
+        self.home_joint_conf = [-1.450444, -0.019580, -0.224367, -1.684073, 0.835103, 1.431834, -1.137849]
 
     def capture_image(self):
         with open('./example/captures.pkl', 'rb') as f:
             message = pickle.load(f)
+        self.execute_joint_impedance_path([message['qpos']])
         return message['rgb'], message['depth'], message['intrinsics']
 
     def execute_joint_impedance_path(self, poses):
         for pose in poses:
             for joint_i, joint_val in enumerate(pose):
                 self.pb.resetJointState(self.robot, self.movable_joint_ids[joint_i], targetValue=joint_val, targetVelocity=0)
+
+    def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
+        # TODO flying gripper or diff-ik
+        pass
 
     def get_current_joint_states(self):
         joint_states = {}
@@ -73,19 +130,22 @@ class FrankaPybullController(FrankaController):
         ee_pose[:3, 3] = ee_link_state[0]
         joint_states['ee_pose'] = ee_pose
         return joint_states
-    
-    def get_gripper_camera_extrinsics(self):
-        robot_state_cur = self.get_current_joint_states()
-        extrinsic = robot_state_cur['ee_pose'].dot(EE2CAM)
-        return extrinsic
 
     def open_gripper(self):
-        # TODO set joint 11, 12
-        pass
+        for gripper_joint_id in self.gripper_joint_ids:
+            self.pb.resetJointState(self.robot, gripper_joint_id, targetValue=.04, targetVelocity=0)
 
     def close_gripper(self):
-        # TODO set joint 11 12
-        pass
+        for gripper_joint_id in self.gripper_joint_ids:
+            self.pb.resetJointState(self.robot, gripper_joint_id, targetValue=0., targetVelocity=0)
+
+    def go_to_home(self, gripper_open=False):
+        for joint_i, joint_val in enumerate(self.home_joint_conf):
+            self.pb.resetJointState(self.robot, self.movable_joint_ids[joint_i], targetValue=joint_val, targetVelocity=0)
+        if gripper_open:
+            self.open_gripper()
+        else:
+            self.close_gripper()
 
 
 class FrankaRealworldController(FrankaController):
@@ -102,11 +162,6 @@ class FrankaRealworldController(FrankaController):
         self.socket.send(zlib.compress(pickle.dumps({'message_name': 'capture_realsense'})))
         message = pickle.loads(zlib.decompress(self.socket.recv()))
         return message['rgb'], message['depth'], message['intrinsics'] # dep in m (not mm, no need to /1000)
-
-    def get_gripper_camera_extrinsics(self):
-        robot_state_cur = self.get_current_joint_states()
-        extrinsic = robot_state_cur['ee_pose'].dot(EE2CAM)
-        return extrinsic
 
     def execute_cartesian_impedance_path(self, poses, gripper_isclose: Optional[Union[np.ndarray, bool]] = None, speed_factor=3):
         """
@@ -173,7 +228,7 @@ class FrankaRealworldController(FrankaController):
 
 def initialize_robot_interface(config):
     if config.run_in_simulation:
-        robot_interface = FrankaPybullController(config)
+        robot_interface = FrankaPybulletController(config)
     else:
         robot_interface = FrankaRealworldController(config)
     return robot_interface
