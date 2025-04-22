@@ -43,10 +43,13 @@ def main_pick_place_planned_franka():
         current_qpos = robot_interface.get_current_joint_confs()
         picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
         print('Executing picking command sequence...')
-        execution_manager.execute_commands(picking_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/pick_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl')
+        is_success = execution_manager.execute_commands(
+            picking_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/pick_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl',
+            success_checker_hook=lambda: robot_interface.get_gripper_state() > 0.01
+        )
         print('Finish picking command sequence.')
 
-        if robot_interface.get_gripper_state() < 0.01:
+        if not is_success:
             print('Grasp failed.')
             robot_interface.go_to_home(gripper_open=True)
             continue

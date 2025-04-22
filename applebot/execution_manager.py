@@ -10,6 +10,7 @@
 """
 
 """
+from typing import Optional
 import numpy as np
 from applebot.planner import CartesianGoalCommand, GripperMotionCommand, JointPathCommand, Command
 
@@ -30,7 +31,9 @@ class ExecutionManager:
         elif isinstance(command, CartesianGoalCommand):
             current_ee_pose = self.robot_client.get_current_joint_states()['ee_pose']
             nstep = max(np.abs(command.args[0][:3, 3] - current_ee_pose[:3, 3]) / self.config.cartesian_impedance_max_dist_perstep)
-            self.robot_client.execute_cartesian_impedance_path([current_ee_pose, command.args[0]], speed_factor=int(nstep), is_capturing=is_capturing)
+            self.robot_client.execute_cartesian_impedance_path(
+                [current_ee_pose, command.args[0]], speed_factor=int(nstep), is_capturing=is_capturing, capture_step=2
+            )
         elif isinstance(command, GripperMotionCommand):
             if command.args[0] == 'open':
                 self.robot_client.open_gripper()
@@ -41,7 +44,10 @@ class ExecutionManager:
         else:
             raise ValueError(f"Unknown command type: {command}")
 
-    def execute_commands(self, commands: list[Command], is_capturing: bool = False, capture_save_name: str = 'captured_list.pkl'):
+    def execute_commands(
+        self, commands: list[Command], is_capturing: bool = False, capture_save_name: str = 'captured_list.pkl',
+        success_checker_hook: Optional[callable] = None,
+    ):
         """
         Execute a sequence of commands.
         """
@@ -50,9 +56,19 @@ class ExecutionManager:
             # flush saved_list
             self.robot_client.dump_captured_list('tmp.pkl')
         for command in commands:
-            self.exeute_command(command)
+            self.exeute_command(command, is_capturing=is_capturing)
+
+        if success_checker_hook is not None:
+            is_success = success_checker_hook()
+        else:
+            is_success = True
+
         if is_capturing:
+            if not is_success:
+                print("Execution failed, skipping capture save.")
+                return is_success
             self.robot_client.dump_captured_list(capture_save_name)
+        return is_success
 
 
 def initialize_execution_manager(config, robot_client) -> ExecutionManager:

@@ -37,7 +37,7 @@ def capture_realsense(message):
 
 
 def get_fixed_camera_extrinsic(message):
-    with open(osp.join(osp.dirname(__file__), '../', 'calibrations', 'camera_configs_latest.pkl'), 'rb') as f:
+    with open(osp.join(osp.dirname(__file__), 'calibrations', 'camera_configs_latest.pkl'), 'rb') as f:
         camera_configs = pickle.load(f)
     message = {
         message['camera_name']: camera_configs[message['camera_name']]['extrinsics']
@@ -219,10 +219,11 @@ def dump_captured_list(message):
         }
     }
     dirname = osp.dirname(filename)
-    if not osp.exists(dirname):
+    if len(dirname) > 0 and not osp.exists(dirname):
         os.makedirs(dirname)
+    # TODO: async
     with open(filename, 'wb') as f:
-        pickle.dump(save_traj, f)
+        pickle.dump(saved_dict, f)
     print(f'saved to {filename}')
     save_traj = []
 
@@ -297,8 +298,8 @@ if __name__ == '__main__':
     # robot_interface.set_open_gripper_width(0.06) # default gripper width
 
     target_camera_name = 'robot1_hand' # 'mount2'  #
-    capture_camera_name = 'mount2'
-    camera_list = [target_camera_name, capture_camera_name]
+    capture_camera_names = ['mount2', 'mount1']
+    camera_list = [target_camera_name] + capture_camera_names
     cameras = get_realsense_capturer_dict(camera_list, auto_close=True, skip_frames=35)
     save_traj = []
 
