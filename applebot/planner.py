@@ -172,6 +172,7 @@ def get_xyz_extend_from_mask(point_cloud, mask):
         tuple: The limits of the point cloud.
     """
     point_valid = point_cloud[mask]
+    # TODO: outlier filtering
     min_x, min_y, min_z = point_valid.min(axis=0)
     max_x, max_y, max_z = point_valid.max(axis=0)
     return min_x, max_x, min_y, max_y, min_z, max_z
