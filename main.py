@@ -10,11 +10,11 @@
 """
 
 """
-from robot_client_interface import initialize_robot_interface
-from execution_manager import initialize_execution_manager
-from perception import initialize_perception_interface, RGBDObservation
-from planner import initialize_planning_interface
-from utils import read_yaml, show_image_with_mask
+from applebot.robot_client_interface import initialize_robot_interface
+from applebot.execution_manager import initialize_execution_manager
+from applebot.perception import initialize_perception_interface, RGBDObservation
+from applebot.planner import initialize_planning_interface
+from applebot.utils.common_utils import read_yaml, show_image_with_mask
 
 GRASPABLE_WIDTH = 0.08
 

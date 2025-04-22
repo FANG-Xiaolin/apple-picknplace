@@ -15,8 +15,8 @@ from functools import cached_property
 import numpy as np
 from uncos import UncOS
 
-from gpt_client import GPTClient
-from utils import crop_image
+from applebot.gpt_client import GPTClient
+from applebot.utils.common_utils import crop_image
 
 
 def transform_pointcloud(transform_mat, input_pointcloud, set_invalid=False):

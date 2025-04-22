@@ -13,8 +13,8 @@ from deoxys.utils.log_utils import get_deoxys_example_logger
 from deoxys.utils import YamlConfig, transform_utils
 from beta_scripts.osc_traj_following import interpolate_pose_trajectory
 
-from hw_utils.rs_capture import get_realsense_capturer_dict
-from hw_utils.deoxys_utils import osc_move_to_target_absolute_pose_controller, get_franka_interface
+from applebot.utils.rs_capture import get_realsense_capturer_dict
+from applebot.utils.deoxys_utils import osc_move_to_target_absolute_pose_controller, get_franka_interface
 
 
 def reset_joint_to(message):
@@ -134,18 +134,12 @@ def execute_posesmat4_osc(message):
             osc_move_to_target_absolute_pose_controller(
                 robot_interface, controller_cfg_osc,
                 step, 
-                # gripper_open = gripper_isclose[indices[i]]<0,
-                # gripper_close = gripper_isclose[indices[i]]>0,
-                # gripper_stay = gripper_isclose[indices[i]]==0
             )
         else:
             for _ in range(speed_factor):
                 osc_move_to_target_absolute_pose_controller(
                     robot_interface, controller_cfg_osc,
                     step,                 
-                    # gripper_open = gripper_isclose[indices[i]]<0,
-                    # gripper_close = gripper_isclose[indices[i]]>0,
-                    # gripper_stay = gripper_isclose[indices[i]]==0
                 )
     message = {"success": True}
     socket.send(zlib.compress(pickle.dumps(message)))

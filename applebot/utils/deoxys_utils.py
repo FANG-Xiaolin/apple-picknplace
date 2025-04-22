@@ -1,3 +1,13 @@
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
+# File   : deoxys_interfaces.py
+# Author : Jiayuan Mao
+# Email  : maojiayuan@gmail.com
+# Date   : 09/11/2024
+#
+# This file is part of Project Concepts.
+# Distributed under terms of the MIT license.
+
 import numpy as np
 import os.path as osp
 

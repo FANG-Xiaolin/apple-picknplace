@@ -15,8 +15,8 @@ from abc import ABC
 from typing import Any, Optional, Literal, Iterator
 from dataclasses import dataclass
 import numpy as np
-from utils import EvalConfig
-from rotation_utils import euler2mat
+from applebot.utils.common_utils import EvalConfig
+from applebot.utils.rotation_utils import euler2mat
 
 Mat4 = np.ndarray #np.typing.NDArray[tuple[Literal[4], Literal[4]], np.dtype[np.float32]]
 JointConf = np.ndarray
@@ -182,7 +182,6 @@ class AnyGraspSampler(GraspSampler):
         # Initialize the any grasp sampler
         super().__init__()
         from gsnet import AnyGrasp
-        from graspnetAPI import GraspGroup
 
         cfgs = EvalConfig({
             'checkpoint_path': config.anygrasp_ckpt_path,

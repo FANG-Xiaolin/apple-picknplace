@@ -11,7 +11,7 @@
 
 """
 import numpy as np
-from planner import CartesianGoalCommand, GripperMotionCommand, JointPathCommand, Command
+from applebot.planner import CartesianGoalCommand, GripperMotionCommand, JointPathCommand, Command
 
 class ExecutionManager:
     def __init__(self, config, robot_client):

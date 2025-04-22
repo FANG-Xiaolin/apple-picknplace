@@ -14,9 +14,8 @@ import base64
 import os
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from openai import OpenAI
-from utils import plot_images
+from applebot.utils.common_utils import plot_images
 
 OPENAI_ORGANIZATION_KEY = ""
 OPENAI_PROJECT_KEY = None
