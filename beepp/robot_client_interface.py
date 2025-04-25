@@ -128,7 +128,7 @@ class FrankaPybulletController(FrankaController):
         joint_states = {}
         joint_states['qpos'] = [self.pb.getJointState(self.robot, joint_i)[0] for joint_i in self.movable_joint_ids]
         ee_link_state = self.pb.getLinkState(self.robot, 10)
-        from applebot.utils.rotation_utils import quaternion_to_matrix
+        from beepp.utils.rotation_utils import quaternion_to_matrix
         ee_pose = np.eye(4)
         quat_x, quat_y, quat_z, quat_w = ee_link_state[1]
         ee_pose[:3, :3] = quaternion_to_matrix(np.array([quat_w, quat_x, quat_y, quat_z]))

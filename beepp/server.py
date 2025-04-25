@@ -16,8 +16,8 @@ from deoxys.utils.log_utils import get_deoxys_example_logger
 from deoxys.utils import YamlConfig, transform_utils
 from beta_scripts.osc_traj_following import interpolate_pose_trajectory
 
-from applebot.utils.rs_capture import get_realsense_capturer_dict
-from applebot.utils.deoxys_utils import osc_move_to_target_absolute_pose_controller, get_franka_interface
+from beepp.utils.rs_capture import get_realsense_capturer_dict
+from beepp.utils.deoxys_utils import osc_move_to_target_absolute_pose_controller, get_franka_interface
 
 
 def reset_joint_to(message):

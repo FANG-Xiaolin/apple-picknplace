@@ -15,7 +15,7 @@ import os
 import cv2
 import numpy as np
 from openai import OpenAI
-from applebot.utils.common_utils import plot_images
+from beepp.utils.common_utils import plot_images
 
 OPENAI_ORGANIZATION_KEY = ""
 OPENAI_PROJECT_KEY = None

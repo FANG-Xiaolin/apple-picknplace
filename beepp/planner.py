@@ -15,8 +15,8 @@ from abc import ABC
 from typing import Any, Optional, Literal, Iterator
 from dataclasses import dataclass
 import numpy as np
-from applebot.utils.common_utils import EvalConfig
-from applebot.utils.rotation_utils import euler2mat
+from beepp.utils.common_utils import EvalConfig
+from beepp.utils.rotation_utils import euler2mat
 
 Mat4 = np.ndarray #np.typing.NDArray[tuple[Literal[4], Literal[4]], np.dtype[np.float32]]
 JointConf = np.ndarray

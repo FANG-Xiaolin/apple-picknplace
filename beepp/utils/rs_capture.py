@@ -3,7 +3,7 @@ try:
     import pyrealsense2 as rs
 except ImportError:
     print('pyrealsense2 is not installed. Please install it by running: pip install pyrealsense2')
-from applebot.utils.common_utils import read_yaml
+from beepp.utils.common_utils import read_yaml
 
 
 def rs_intrinsics_to_opencv_intrinsics(intr):
