@@ -1,9 +1,12 @@
-# APPLE – Automated Pick and PLacE
+# Beep – Basic Automated Pick and Place
 
 A minimal Python package for automated picking and placing of objects. 
-It uses [UncOS](https://github.com/FANG-Xiaolin/uncos) for object segmentation, 
-GPT for object naming, 
-and simple motion planners for manipulation.
+
+## Installation
+
+TODO
+```
+```
 
 ## Setup
 
