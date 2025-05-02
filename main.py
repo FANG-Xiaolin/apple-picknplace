@@ -11,6 +11,7 @@
 
 """
 import time
+import tap
 from beepp.robot_client_interface import initialize_robot_interface
 from beepp.execution_manager import initialize_execution_manager
 from beepp.perception import initialize_perception_interface, RGBDObservation
@@ -18,26 +19,22 @@ from beepp.planner import initialize_planning_interface
 from beepp.utils.common_utils import read_yaml, show_image_with_mask
 
 def main_pick_place_planned_franka():
-    config = read_yaml('./config.yml')
+    config = BeeppConfig()
+    sys_configs = read_yaml('./config.yml')
 
-    robot_interface = initialize_robot_interface(config)
+    robot_interface = initialize_robot_interface(sys_configs, config.run_in_simulation)
     perception_interface = initialize_perception_interface()
-    planning_interface = initialize_planning_interface(config)
-    execution_manager = initialize_execution_manager(config, robot_interface)
+    planning_interface = initialize_planning_interface(sys_configs)
+    execution_manager = initialize_execution_manager(sys_configs, robot_interface)
 
-    is_capturing = True
-    trial_num = 10
-    object_name = 'apple'
-    place_xrange = [0.45, 0.7]
-    place_yrange = [-0.6, -0.1]
-
-    for _ in range(trial_num):
+    for run_i in range(config.num_runs):
+        print(f'>>>> Running {run_i + 1} / {config.num_runs} <<<')
         try:
             rgb_im, dep_im, intrinsics = robot_interface.capture_image()
             extrinsic = robot_interface.get_gripper_camera_extrinsics()
             rgbd_observation = RGBDObservation(rgb_im, dep_im, intrinsics, extrinsic)
 
-            target_object_mask = perception_interface.get_object_mask(rgbd_observation, object_name)
+            target_object_mask = perception_interface.get_object_mask(rgbd_observation, config.object_name)
             if config.vis:
                 show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
 
@@ -58,14 +55,32 @@ def main_pick_place_planned_franka():
             robot_interface.go_to_home(gripper_open=False)
     
             current_qpos = robot_interface.get_current_joint_confs()
-            placing_command_sequence = planning_interface.plan_placing(current_qpos, place_xrange, place_yrange)
+            placing_command_sequence = planning_interface.plan_placing(current_qpos, config.place_xrange, config.place_yrange)
             print('Executing placing command sequence...')
-            execution_manager.execute_commands(placing_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/place_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl')
+            execution_manager.execute_commands(
+                placing_command_sequence, is_capturing=config.is_capturing,
+                capture_save_name=f'{config.save_dir}/place_{config.object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl'
+            )
             print('Finish placing command sequence.')
 
             robot_interface.go_to_home(gripper_open=True)
         except:
             pass
+
+
+class BeeppConfig(tap.Tap):
+    vis: bool = False
+    run_in_simulation: bool = False
+
+    num_runs: int = 10
+    num_trial: int = 4 # number of trials for each run
+
+    # Data collection Settings
+    is_capturing: bool = True
+    save_dir: str = 'default'
+    object_name: str = 'apple'
+    place_xrange: list[float] = [0.45, 0.7]
+    place_yrange: list[float] = [-0.6, -0.1]
 
 
 if __name__ == '__main__':

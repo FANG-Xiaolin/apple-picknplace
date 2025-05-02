@@ -255,8 +255,8 @@ class FrankaRealworldController(FrankaController):
         return message['success']
 
 
-def initialize_robot_interface(config):
-    if config.run_in_simulation:
+def initialize_robot_interface(config, run_in_simulation=False):
+    if run_in_simulation:
         robot_interface = FrankaPybulletController(config)
     else:
         robot_interface = FrankaRealworldController(config)

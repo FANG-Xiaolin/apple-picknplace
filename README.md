@@ -11,8 +11,10 @@ TODO
 Copy the config file template and make any necessary changes.
 
 ```bash
-cp config_template.py config.py
+cp config_template.yml config.yml
 ```
+
+Set `run_in_simulation` to `True` in `config.yml` to run in simulation, as a sanity check. 
 
 ## Usage
 
