@@ -1,4 +1,5 @@
 import numpy as np
+import os.path as osp
 try:
     import pyrealsense2 as rs
 except ImportError:
@@ -81,7 +82,7 @@ class CaptureRS:
 
 
 def get_camera_serial_from_name(camera_name):
-    camera_name_to_serial = read_yaml('./config.yml').camera_name_to_serial
+    camera_name_to_serial = read_yaml(osp.join(osp.dirname(__file__), '../../config.yml')).camera_name_to_serial
     return camera_name_to_serial[camera_name]
 
 

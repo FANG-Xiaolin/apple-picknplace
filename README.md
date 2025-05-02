@@ -5,8 +5,6 @@ A minimal Python package for automated picking and placing of objects.
 ## Installation
 
 TODO
-```
-```
 
 ## Setup
 
@@ -18,6 +16,12 @@ cp config_template.py config.py
 
 ## Usage
 
+On machine controlling the robot / NUC:
+```
+python beepp/server.py
+```
+
+On machine with GPUs:
 ```
 python main.py
 ```
