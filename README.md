@@ -6,15 +6,21 @@ A minimal Python package for automated picking and placing of objects.
 
 TODO
 
+## Sanity Check
+
+Run in simulation with the provided pkl file for debugging / visualization.
+
+```
+python main.py --run_in_simulation --vis
+```
+
 ## Setup
 
-Copy the config file template and make any necessary changes.
+Copy the config file template and make any necessary hardware-specific changes.
 
 ```bash
 cp config_template.yml config.yml
 ```
-
-Set `run_in_simulation` to `True` in `config.yml` to run in simulation, as a sanity check. 
 
 ## Usage
 

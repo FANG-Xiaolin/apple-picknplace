@@ -19,7 +19,7 @@ from beepp.planner import initialize_planning_interface
 from beepp.utils.common_utils import read_yaml, show_image_with_mask
 
 def main_pick_place_planned_franka():
-    config = BeeppConfig()
+    config = BeeppConfig().parse_args()
     sys_configs = read_yaml('./config.yml')
 
     robot_interface = initialize_robot_interface(sys_configs, config.run_in_simulation)
@@ -38,14 +38,19 @@ def main_pick_place_planned_franka():
             if config.vis:
                 show_image_with_mask(rgbd_observation.rgb_im, target_object_mask)
 
-            current_qpos = robot_interface.get_current_joint_confs()
-            picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
-            print('Executing picking command sequence...')
-            is_success = execution_manager.execute_commands(
-                picking_command_sequence, is_capturing=is_capturing, capture_save_name=f'saved/pick_{object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl',
-                success_checker_hook=lambda: robot_interface.get_gripper_state() > 0.01
-            )
-            print('Finish picking command sequence.')
+            is_success = False
+            for _ in range(config.num_trial):
+                current_qpos = robot_interface.get_current_joint_confs()
+                picking_command_sequence = planning_interface.plan_picking(current_qpos, rgbd_observation.pcd_cameraframe, rgbd_observation.pcd_worldframe, rgbd_observation.rgb_im, target_object_mask)
+                print('Executing picking command sequence...')
+                is_success = execution_manager.execute_commands(
+                    picking_command_sequence, is_capturing=config.is_capturing,
+                    capture_save_name=f'{config.save_dir}/pick_{config.object_name}_{time.strftime("%Y%m%d-%H%M%S")}.pkl',
+                    success_checker_hook=lambda: robot_interface.get_gripper_state() > 0.01
+                )
+                print('Finish picking command sequence.')
+                if is_success:
+                    break
 
             if not is_success:
                 print('Grasp failed.')
