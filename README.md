@@ -1,10 +1,12 @@
 # Beep – Basic Automated Pick and Place
 
-A minimal Python package for automated picking and placing of objects. 
+A minimal Python package for automated picking and placing of objects.
 
 ## Installation
 
-TODO
+```
+pip install -e .
+```
 
 ## Sanity Check
 
@@ -36,4 +38,4 @@ python main.py
 
 ## Note
 There is no task planner or any other high-level functionality.
-The package is designed to be a simple tool with fixed sequences of actions. 
+The package is designed to be a simple tool with fixed sequences of actions.
